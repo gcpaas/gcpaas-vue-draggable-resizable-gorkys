@@ -1,0 +1,1 @@
+# gcpaas-vue-draggable-resizable
