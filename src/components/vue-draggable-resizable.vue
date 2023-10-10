@@ -8,6 +8,7 @@
       [classNameDraggable]: draggable,
       [classNameResizable]: resizable
     }, className]"
+    :id = "id"
     @mousedown="elementMouseDown"
     @touchstart="elementTouchDown"
     @contextmenu="onContextMenu"
@@ -91,6 +92,10 @@ export default {
     classNameHandle: {
       type: String,
       default: 'handle'
+    },
+    id: {
+      type: String,
+      default: ''
     },
     disableUserSelect: {
       type: Boolean,
@@ -261,7 +266,6 @@ export default {
       top: this.y,
       right: null,
       bottom: null,
-
       width: null,
       height: null,
       widthTouched: false,
@@ -1043,6 +1047,35 @@ export default {
     }
   },
   computed: {
+    style () {
+      const dom = document.querySelector('#' + this.id)
+      if (dom) {
+        let currentTransform = dom.style.transform
+        const rotateReg = /rotateX\(\d+deg\) rotateY\(\d+deg\) rotateZ\(\d+deg\)/g
+        const perspectiveReg = /perspective\(\d+px\)/g
+        const rotateStyle = currentTransform.match(rotateReg)
+        const perspectiveStyle = currentTransform.match(perspectiveReg)
+        if (rotateStyle !== null && perspectiveStyle !== null) {
+          currentTransform = `translate(${this.left}px, ${this.top}px) ${rotateStyle} ${perspectiveStyle} `
+        } else {
+          currentTransform = `translate(${this.left}px, ${this.top}px) `
+        }
+        return {
+          transform: currentTransform,
+          width: this.computedWidth,
+          height: this.computedHeight,
+          zIndex: this.zIndex,
+          ...(this.dragging && this.disableUserSelect ? userSelectNone : userSelectAuto)
+        }
+      }
+      return {
+        transform: `translate(${this.left}px, ${this.top}px)`,
+        width: this.computedWidth,
+        height: this.computedHeight,
+        zIndex: this.zIndex,
+        ...(this.dragging && this.disableUserSelect ? userSelectNone : userSelectAuto)
+      }
+    },
     handleStyle () {
       return (stick) => {
         if (!this.handleInfo.switch) return { display: this.enabled ? 'block' : 'none' }
@@ -1097,15 +1130,6 @@ export default {
         return stickStyle
       }
     },
-    style () {
-      return {
-        transform: `translate(${this.left}px, ${this.top}px)`,
-        width: this.computedWidth,
-        height: this.computedHeight,
-        zIndex: this.zIndex,
-        ...(this.dragging && this.disableUserSelect ? userSelectNone : userSelectAuto)
-      }
-    },
     // 控制柄显示与否
     actualHandles () {
       if (!this.resizable) return []
@@ -1138,7 +1162,6 @@ export default {
       return (Boolean(this.handle) && ['tl', 'tr', 'br', 'bl'].includes(this.handle))
     }
   },
-
   watch: {
     active (val) {
       this.enabled = val
