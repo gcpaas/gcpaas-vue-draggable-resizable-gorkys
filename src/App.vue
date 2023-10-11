@@ -4,6 +4,7 @@
       <vue-draggable-resizable
         :w="200"
         :h="200"
+        :id= "'first'"
         :parent="true"
         :debug="false"
         :min-width="200"
@@ -17,6 +18,7 @@
       <vue-draggable-resizable
         :w="200"
         :h="200"
+        :id= "'second'"
         :parent="true"
         :x="210"
         :debug="false"
@@ -31,6 +33,7 @@
       <vue-draggable-resizable
         :w="200"
         :h="200"
+        :id= "'third'"
         :parent="true"
         :x="420"
         :debug="false"
