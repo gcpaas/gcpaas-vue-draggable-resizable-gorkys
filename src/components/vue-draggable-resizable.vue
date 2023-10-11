@@ -141,6 +141,10 @@ export default {
         return val === 'auto'
       }
     },
+    transform: {
+      type: String,
+      default: ''
+    },
     minWidth: {
       type: Number,
       default: 0,
@@ -1099,7 +1103,7 @@ export default {
     },
     style () {
       return {
-        transform: `translate(${this.left}px, ${this.top}px)`,
+        transform: this.transform ? `translate(${this.left}px, ${this.top}px)` + '' + this.transform : `translate(${this.left}px, ${this.top}px)`,
         width: this.computedWidth,
         height: this.computedHeight,
         zIndex: this.zIndex,
