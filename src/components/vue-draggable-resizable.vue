@@ -1104,6 +1104,10 @@ export default {
     style () {
       return {
         transform: this.transform ? `translate(${this.left}px, ${this.top}px)` + '' + this.transform : `translate(${this.left}px, ${this.top}px)`,
+        '-ms-transform': this.transform ? `translate(${this.left}px, ${this.top}px)` + '' + this.transform : `translate(${this.left}px, ${this.top}px)`,
+        '-moz-transform': this.transform ? `translate(${this.left}px, ${this.top}px)` + '' + this.transform : `translate(${this.left}px, ${this.top}px)`,
+        '-webkit-transform': this.transform ? `translate(${this.left}px, ${this.top}px)` + '' + this.transform : `translate(${this.left}px, ${this.top}px)`,
+        '-o-transform': this.transform ? `translate(${this.left}px, ${this.top}px)` + '' + this.transform : `translate(${this.left}px, ${this.top}px)`,
         width: this.computedWidth,
         height: this.computedHeight,
         zIndex: this.zIndex,
