@@ -300,9 +300,6 @@ export default {
     this.resetBoundsAndMouseState()
   },
   mounted: function () {
-    $('.resizeDom').resizable({
-      handles: "all"
-    })
     if (!this.enableNativeDrag) {
       this.$el.ondragstart = () => false
     }
@@ -680,9 +677,10 @@ export default {
       const angleRad = angle * (Math.PI / 180)
 
       // 旋转后的坐标
-      const x1_rotated = (xlt - centerX) * Math.cos(angleRad) - (ylt - centerY) * Math.sin(angleRad) + centerX
-      const y1_rotated = (xlt - centerX) * Math.sin(angleRad) + (ylt - centerY) * Math.cos(angleRad) + centerY
-
+      let x1_rotated = (xlt - centerX) * Math.cos(angleRad) - (ylt - centerY) * Math.sin(angleRad) + centerX
+      let y1_rotated = (xlt - centerX) * Math.sin(angleRad) + (ylt - centerY) * Math.cos(angleRad) + centerY
+      x1_rotated = parseInt(x1_rotated)
+      y1_rotated = parseInt(y1_rotated)
       return { x: x1_rotated, y: y1_rotated };
     },
     handleResize (e) {
@@ -835,6 +833,8 @@ export default {
         top = result.y
         left = result.x
       }
+      width = parseInt(width)
+      height = parseInt(height)
       if (this.onResize(this.handle, left, top, width, height) === false) {
         return
       }
