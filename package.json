@@ -1,6 +1,6 @@
 {
   "name": "@gcpaas/vue-draggable-resizable-gorkys",
-  "version": "1.0.1-2023101601-Alpha",
+  "version": "1.0.2-2024010401-Alpha",
   "author": "liu.shiyi",
   "main": "dist/VueDraggableResizable.umd.min.js",
   "unpkg": "dist/VueDraggableResizable.umd.min.js",
