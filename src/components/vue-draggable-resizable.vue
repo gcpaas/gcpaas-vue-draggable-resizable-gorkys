@@ -15,7 +15,7 @@
     <div
       v-for="handle in actualHandles"
       :key="handle"
-      :class="[classNameHandle, classNameHandle + '-' + handle]"
+      :class="[classNameHandle, classNameHandle + '-' + handle,'handle-' + handle]"
       :style="handleStyle(handle)"
       @mousedown.stop.prevent="handleDown(handle, $event)"
       @touchstart.stop.prevent="handleTouchDown(handle, $event)"
@@ -285,7 +285,9 @@ export default {
       enabled: this.active,
       resizing: false,
       dragging: false,
-      zIndex: this.z
+      zIndex: this.z,
+
+      rotateZ:0
     }
   },
 
@@ -298,6 +300,9 @@ export default {
     this.resetBoundsAndMouseState()
   },
   mounted: function () {
+    $('.resizeDom').resizable({
+      handles: "all"
+    })
     if (!this.enableNativeDrag) {
       this.$el.ondragstart = () => false
     }
@@ -504,7 +509,7 @@ export default {
       }
 
       this.resizing = true
-
+// 保存鼠标位置信息、图表的位置大小信息，pageX\pageY:距离页面左上角的距离
       this.mouseClickPosition.mouseX = e.touches ? e.touches[0].pageX : e.pageX
       this.mouseClickPosition.mouseY = e.touches ? e.touches[0].pageY : e.pageY
       this.mouseClickPosition.left = this.left
@@ -669,17 +674,31 @@ export default {
       this.top = top
       this.bottom = this.parentHeight - this.height - top
     },
-    // 控制柄移动
+
+    rotatePoint(xlt,ylt, centerX, centerY, angle) {
+      // 将角度转换为弧度
+      const angleRad = angle * (Math.PI / 180)
+
+      // 旋转后的坐标
+      const x1_rotated = (xlt - centerX) * Math.cos(angleRad) - (ylt - centerY) * Math.sin(angleRad) + centerX
+      const y1_rotated = (xlt - centerX) * Math.sin(angleRad) + (ylt - centerY) * Math.cos(angleRad) + centerY
+
+      return { x: x1_rotated, y: y1_rotated };
+    },
     handleResize (e) {
       let left = this.left
       let top = this.top
       let right = this.right
       let bottom = this.bottom
+      let width = this.width
+      let height = this.height
+      // resize之前的中心点
+      const centerPoint = {x:left + width/2 , y:top + height/2}
 
       const mouseClickPosition = this.mouseClickPosition
       const lockAspectRatio = this.lockAspectRatio
       const aspectFactor = this.aspectFactor
-
+      // 计算x y轴的偏移量
       const tmpDeltaX = mouseClickPosition.mouseX - (e.touches ? e.touches[0].pageX : e.pageX)
       const tmpDeltaY = mouseClickPosition.mouseY - (e.touches ? e.touches[0].pageY : e.pageY)
 
@@ -690,49 +709,132 @@ export default {
         this.heightTouched = true
       }
       const [deltaX, deltaY] = snapToGrid(this.grid, tmpDeltaX, tmpDeltaY, this.scaleRatio)
-
-      if (this.handle.includes('b')) {
-        bottom = restrictToBounds(
-          mouseClickPosition.bottom + deltaY,
-          this.bounds.minBottom,
-          this.bounds.maxBottom
-        )
-        if (this.lockAspectRatio && this.resizingOnY) {
-          right = this.right - (this.bottom - bottom) * aspectFactor
-        }
-      } else if (this.handle.includes('t')) {
-        top = restrictToBounds(
-          mouseClickPosition.top - deltaY,
-          this.bounds.minTop,
-          this.bounds.maxTop
-        )
-        if (this.lockAspectRatio && this.resizingOnY) {
-          left = this.left - (this.top - top) * aspectFactor
-        }
+      // 计算旋转后的左上角坐标
+      const rotatedPoint = this.rotatePoint(this.mouseClickPosition.left,this.mouseClickPosition.top,left + width/2,top + height/2,this.rotateZ)
+      // 中上
+      if(this.handle === 'tm'){
+        const offsetHeight = deltaY * Math.cos(this.rotateZ * Math.PI / 180) - deltaX * Math.sin(this.rotateZ * Math.PI / 180)
+        height = this.mouseClickPosition.h + offsetHeight
+        const x = rotatedPoint.x + offsetHeight * Math.sin(this.rotateZ * Math.PI / 180)
+        const y = rotatedPoint.y - offsetHeight * Math.cos(this.rotateZ * Math.PI / 180)
+        //  旋转中心变化
+        const curCenter = {}
+        curCenter.x = centerPoint.x  + offsetHeight * Math.sin(this.rotateZ * Math.PI / 180) /2
+        curCenter.y = centerPoint.y - offsetHeight * Math.cos(this.rotateZ * Math.PI / 180) / 2
+        const result = this.rotatePoint(x,y,curCenter.x,curCenter.y, -this.rotateZ)
+        top = result.y
+        left = result.x
       }
-
-      if (this.handle.includes('r')) {
-        right = restrictToBounds(
-          mouseClickPosition.right + deltaX,
-          this.bounds.minRight,
-          this.bounds.maxRight
-        )
-        if (this.lockAspectRatio && this.resizingOnX) {
-          bottom = this.bottom - (this.right - right) / aspectFactor
-        }
-      } else if (this.handle.includes('l')) {
-        left = restrictToBounds(
-          mouseClickPosition.left - deltaX,
-          this.bounds.minLeft,
-          this.bounds.maxLeft
-        )
-        if (this.lockAspectRatio && this.resizingOnX) {
-          top = this.top - (this.left - left) / aspectFactor
-        }
+      //左上
+      if (this.handle === 'tl'){
+        // 左上角坐标
+        const x = rotatedPoint.x - deltaX
+        const y = rotatedPoint.y - deltaY
+        //  旋转中心变化
+        const curCenter = {}
+        curCenter.x = centerPoint.x  - deltaX / 2
+        curCenter.y = centerPoint.y - deltaY / 2
+        width = this.mouseClickPosition.w + deltaX * Math.cos(this.rotateZ * Math.PI / 180) + deltaY * Math.sin(this.rotateZ * Math.PI / 180)
+        height = this.mouseClickPosition.h + deltaY * Math.cos(this.rotateZ * Math.PI / 180) - deltaX * Math.sin(this.rotateZ * Math.PI / 180)
+        const result = this.rotatePoint(x,y,curCenter.x,curCenter.y, -this.rotateZ)
+        top = result.y
+        left = result.x
       }
-
-      const width = computeWidth(this.parentWidth, left, right)
-      const height = computeHeight(this.parentHeight, top, bottom)
+      // 右上
+      if(this.handle === 'tr'){
+        const offsetHeight = deltaY * Math.cos(this.rotateZ * Math.PI / 180) - deltaX * Math.sin(this.rotateZ * Math.PI / 180)
+        const offsetWidth = -deltaY * Math.sin(this.rotateZ * Math.PI / 180) - deltaX * Math.cos(this.rotateZ * Math.PI / 180)
+        // 左上角变化
+        const x = rotatedPoint.x + offsetHeight * Math.sin(this.rotateZ * Math.PI / 180)
+        const y = rotatedPoint.y - offsetHeight * Math.cos(this.rotateZ * Math.PI / 180)
+        //  旋转中心变化
+        const curCenter = {}
+        curCenter.x = centerPoint.x  - deltaX / 2
+        curCenter.y = centerPoint.y - deltaY / 2
+        width = this.mouseClickPosition.w + offsetWidth
+        height = this.mouseClickPosition.h + offsetHeight
+        const result = this.rotatePoint(x,y,curCenter.x,curCenter.y, -this.rotateZ)
+        top = result.y
+        left = result.x
+      }
+      // 左中
+      if(this.handle === 'ml'){
+        const offsetWidth = deltaY *  Math.sin(this.rotateZ * Math.PI / 180) + deltaX *  Math.cos(this.rotateZ * Math.PI / 180)
+        width = this.mouseClickPosition.w + offsetWidth
+        // 左上角变化
+        const x = rotatedPoint.x - offsetWidth * Math.cos(this.rotateZ * Math.PI / 180)
+        const y = rotatedPoint.y - offsetWidth * Math.sin(this.rotateZ * Math.PI / 180)
+        //  旋转中心变化
+        const curCenter = {}
+        curCenter.x = centerPoint.x - offsetWidth * Math.cos(this.rotateZ * Math.PI / 180) / 2
+        curCenter.y = centerPoint.y  - offsetWidth * Math.sin(this.rotateZ * Math.PI / 180) / 2
+        const result = this.rotatePoint(x,y,curCenter.x,curCenter.y, -this.rotateZ)
+        top = result.y
+        left = result.x
+      }
+      // 右中
+      if(this.handle === 'mr'){
+        const offsetWidth =  - deltaX *  Math.cos(this.rotateZ * Math.PI / 180) - deltaY *  Math.sin(this.rotateZ * Math.PI / 180)
+        width = this.mouseClickPosition.w + offsetWidth
+        // 左上角变化
+        const x = rotatedPoint.x
+        const y = rotatedPoint.y
+        //  旋转中心变化
+        const curCenter = {}
+        curCenter.x = centerPoint.x + offsetWidth * Math.cos(this.rotateZ * Math.PI / 180) / 2
+        curCenter.y = centerPoint.y + offsetWidth * Math.sin(this.rotateZ * Math.PI / 180) / 2
+        const result = this.rotatePoint(x,y,curCenter.x,curCenter.y, -this.rotateZ)
+        top = result.y
+        left = result.x
+      }
+      // 左下
+      if(this.handle === 'bl'){
+        const offsetHeight = deltaX * Math.sin(this.rotateZ * Math.PI / 180) - deltaY * Math.cos(this.rotateZ * Math.PI / 180)
+        const offsetWidth = deltaY * Math.sin(this.rotateZ * Math.PI / 180) + deltaX * Math.cos(this.rotateZ * Math.PI / 180)
+        // 左上角变化
+        const x = rotatedPoint.x - offsetWidth * Math.cos(this.rotateZ * Math.PI / 180)
+        const y = rotatedPoint.y - offsetWidth * Math.sin(this.rotateZ * Math.PI / 180)
+        //  旋转中心变化
+        const curCenter = {}
+        curCenter.x = centerPoint.x  - deltaX / 2
+        curCenter.y = centerPoint.y - deltaY / 2
+        width = this.mouseClickPosition.w + offsetWidth
+        height = this.mouseClickPosition.h + offsetHeight
+        const result = this.rotatePoint(x,y,curCenter.x,curCenter.y, -this.rotateZ)
+        top = result.y
+        left = result.x
+      }
+      // 中下
+      if(this.handle === 'bm'){
+        const offsetHeight = deltaX * Math.sin(this.rotateZ * Math.PI / 180) - deltaY * Math.cos(this.rotateZ * Math.PI / 180)
+        height = this.mouseClickPosition.h + offsetHeight
+        const x = rotatedPoint.x
+        const y = rotatedPoint.y
+        //  旋转中心变化
+        const curCenter = {}
+        curCenter.x = centerPoint.x  - offsetHeight * Math.sin(this.rotateZ * Math.PI / 180) /2
+        curCenter.y = centerPoint.y + offsetHeight * Math.cos(this.rotateZ * Math.PI / 180) / 2
+        const result = this.rotatePoint(x,y,curCenter.x,curCenter.y, -this.rotateZ)
+        top = result.y
+        left = result.x
+      }
+      // 右下
+      if(this.handle === 'br'){
+        const offsetHeight = deltaX * Math.sin(this.rotateZ * Math.PI / 180) - deltaY * Math.cos(this.rotateZ * Math.PI / 180)
+        const offsetWidth = - deltaY * Math.sin(this.rotateZ * Math.PI / 180) - deltaX * Math.cos(this.rotateZ * Math.PI / 180)
+        // 左上角变化
+        const x = rotatedPoint.x
+        const y = rotatedPoint.y
+        //  旋转中心变化
+        const curCenter = {}
+        curCenter.x = centerPoint.x  - deltaX / 2
+        curCenter.y = centerPoint.y - deltaY / 2
+        width = this.mouseClickPosition.w + offsetWidth
+        height = this.mouseClickPosition.h + offsetHeight
+        const result = this.rotatePoint(x,y,curCenter.x,curCenter.y, -this.rotateZ)
+        top = result.y
+        left = result.x
+      }
       if (this.onResize(this.handle, left, top, width, height) === false) {
         return
       }
@@ -1102,6 +1204,12 @@ export default {
       }
     },
     style () {
+      if(this.transform) {
+        const match = this.transform.match(/rotateZ\((.*?)\)/)
+        if (match) {
+          this.rotateZ = parseInt(match[1])
+        }
+      }
       return {
         transform: this.transform ? `translate(${this.left}px, ${this.top}px)` + '' + this.transform : `translate(${this.left}px, ${this.top}px)`,
         '-ms-transform': this.transform ? `translate(${this.left}px, ${this.top}px)` + '' + this.transform : `translate(${this.left}px, ${this.top}px)`,
@@ -1228,6 +1336,64 @@ export default {
       }
 
       this.changeHeight(val)
+    },
+    rotateZ:{
+      handler(value){
+        const tl = document.querySelector('.handle-tl')
+        const tm = document.querySelector('.handle-tm')
+        const tr = document.querySelector('.handle-tr')
+        const mr = document.querySelector('.handle-mr')
+        const br = document.querySelector('.handle-br')
+        const bm = document.querySelector('.handle-bm')
+        const bl = document.querySelector('.handle-bl')
+        const ml = document.querySelector('.handle-ml')
+        if(value > 23 && value < 68 || value < -112 && value > -157){
+          tl.style.cursor = 'ns-resize'
+          tm.style.cursor = 'nesw-resize'
+          tr.style.cursor = 'ew-resize'
+          mr.style.cursor = 'nwse-resize'
+          br.style.cursor = 'ns-resize'
+          bm.style.cursor = 'nesw-resize'
+          bl.style.cursor = 'ew-resize'
+          ml.style.cursor = 'nwse-resize'
+        } else if(value > 67 && value < 112 || value < -67 && value > -113){
+          tl.style.cursor = 'nesw-resize'
+          tm.style.cursor = 'ew-resize'
+          tr.style.cursor = 'nwse-resize'
+          mr.style.cursor = 'ns-resize'
+          br.style.cursor = 'nesw-resize'
+          bm.style.cursor = 'ew-resize'
+          bl.style.cursor = 'nwse-resize'
+          ml.style.cursor = 'ns-resize'
+        } else if(value > 111 && value <157 || value < -22 && value > -68){
+          tl.style.cursor = 'ew-resize'
+          tm.style.cursor = 'nwse-resize'
+          tr.style.cursor = 'ns-resize'
+          mr.style.cursor = 'nesw-resize'
+          br.style.cursor = 'ew-resize'
+          bm.style.cursor = 'nwse-resize'
+          bl.style.cursor = 'ns-resize'
+          ml.style.cursor = 'nesw-resize'
+        } else if(value > 156 || value < 0 && value > -23){
+          tl.style.cursor = 'nwse-resize'
+          tm.style.cursor = 'ns-resize'
+          tr.style.cursor = 'nesw-resize'
+          mr.style.cursor = 'ew-resize'
+          br.style.cursor = 'nwse-resize'
+          bm.style.cursor = 'ns-resize'
+          bl.style.cursor = 'nesw-resize'
+          ml.style.cursor = 'ew-resize'
+        }else{
+          tl.style.cursor = 'nwse-resize'
+          tm.style.cursor = 'ns-resize'
+          tr.style.cursor = 'nesw-resize'
+          mr.style.cursor = 'ew-resize'
+          br.style.cursor = 'nwse-resize'
+          bm.style.cursor = 'ns-resize'
+          bl.style.cursor = 'nesw-resize'
+          ml.style.cursor = 'ew-resize'
+        }
+      }
     }
   }
 }
